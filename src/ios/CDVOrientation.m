@@ -81,6 +81,7 @@
             if (value != nil) {
                 _isLocked = true;
                 [[UIDevice currentDevice] setValue:value forKey:@"orientation"];
+                [UINavigationController attemptRotationToDeviceOrientation];
             } else {
                 _isLocked = false;
             }
