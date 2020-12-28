@@ -19,7 +19,7 @@
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
     id="cordova-plugin-screen-orientation"
     version="3.0.2-dev">
-    <name>Screen Orientation</name>
+    <name>CogniFit's fork of cordova-plugin-screen-orientation</name>
     <description>
     	Cordova Screen Orientation plugin
     	See original project at: https://github.com/apache/cordova-plugin-screen-orientation	
