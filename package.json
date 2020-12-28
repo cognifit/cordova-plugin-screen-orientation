@@ -1,10 +1,10 @@
 {
-  "name": "cordova-plugin-screen-orientation",
+  "name": "@cognifit/cordova-plugin-screen-orientation",
   "version": "3.0.2-dev",
-  "description": "Cordova Screen Orientation plugin",
+  "description": "CogniFit's fork of cordova-plugin-screen-orientation.\nCordova Screen Orientation plugin",
   "repository": {
     "type": "git",
-    "url": "https://github.com/apache/cordova-plugin-screen-orientation"
+    "url": "https://github.com/cognifit/cordova-plugin-screen-orientation"
   },
   "bugs": {
     "url": "https://issues.apache.org/jira/browse/CB"

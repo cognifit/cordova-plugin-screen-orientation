@@ -20,7 +20,10 @@
     id="cordova-plugin-screen-orientation"
     version="3.0.2-dev">
     <name>Screen Orientation</name>
-    <description>Cordova Screen Orientation plugin</description>
+    <description>
+    	Cordova Screen Orientation plugin
+    	See original project at: https://github.com/apache/cordova-plugin-screen-orientation	
+    </description>
     <license>Apache 2.0</license>
 
     <engines>
