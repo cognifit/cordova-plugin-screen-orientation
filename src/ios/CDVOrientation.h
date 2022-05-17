@@ -27,9 +27,11 @@
 {
 @protected
     BOOL _isLocked;
+    BOOL _attemptRotationToDeviceOrientation;
     UIInterfaceOrientation _lastOrientation;
 }
 
 - (void)screenOrientation:(CDVInvokedUrlCommand *)command;
+- (void)doNotAutorotateOnNextUpdate:(CDVInvokedUrlCommand *)command;
 
 @end

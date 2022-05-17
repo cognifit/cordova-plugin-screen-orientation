@@ -75,7 +75,9 @@
                 if (_lastOrientation != UIInterfaceOrientationUnknown) {
                     [[UIDevice currentDevice] setValue:[NSNumber numberWithInt:_lastOrientation] forKey:@"orientation"];
                     ((void (*)(CDVViewController*, SEL, NSMutableArray*))objc_msgSend)(vc,selector,result);
-                    [UINavigationController attemptRotationToDeviceOrientation];
+                    if (_attemptRotationToDeviceOrientation) {
+                        [UINavigationController attemptRotationToDeviceOrientation];
+                    }
                 }
             }
             if (value != nil) {
@@ -95,6 +97,12 @@
     
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
     
+}
+
+-(void)doNotAutorotateOnNextUpdate:(CDVInvokedUrlCommand *)command
+{
+    _attemptRotationToDeviceOrientation = false;
+    [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK] callbackId:command.callbackId];
 }
 
 @end
