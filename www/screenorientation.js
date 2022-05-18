@@ -43,6 +43,9 @@ screenOrientation.setOrientation = function(orientation) {
     orientationMask = window.OrientationLockType[orientation];
     cordova.exec(null, null, "CDVOrientation", "screenOrientation", [orientationMask, orientation]);
 };
+screenOrientation.doNotAutorotateOnNextUpdate = function() {
+    cordova.exec(null, null, "CDVOrientation", "doNotAutorotateOnNextUpdate", []);
+};
 
 if (!screen.orientation) {
     screen.orientation = {};
