@@ -28,6 +28,10 @@
 
 @implementation CDVOrientation
 
+-(void)pluginInitialize {
+    _attemptRotationToDeviceOrientation = true;
+}
+
 -(void)screenOrientation:(CDVInvokedUrlCommand *)command
 {
     CDVPluginResult* pluginResult;
@@ -78,6 +82,7 @@
                     if (_attemptRotationToDeviceOrientation) {
                         [UINavigationController attemptRotationToDeviceOrientation];
                     }
+                    _attemptRotationToDeviceOrientation = true;
                 }
             }
             if (value != nil) {
