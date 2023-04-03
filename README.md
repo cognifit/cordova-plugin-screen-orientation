@@ -21,11 +21,9 @@ description: Set the screen orientation
 #         under the License.
 -->
 
-|AppVeyor|Travis CI|
-|:-:|:-:|
-|[![Build status](https://ci.appveyor.com/api/projects/status/github/apache/cordova-plugin-screen-orientation?branch=master)](https://ci.appveyor.com/project/ApacheSoftwareFoundation/cordova-plugin-screen-orientation)|[![Build Status](https://travis-ci.org/apache/cordova-plugin-screen-orientation.svg?branch=master)](https://travis-ci.org/apache/cordova-plugin-screen-orientation)|
-
 # Cordova Screen Orientation Plugin
+
+[![Android Testsuite](https://github.com/apache/cordova-plugin-screen-orientation/actions/workflows/android.yml/badge.svg)](https://github.com/apache/cordova-plugin-screen-orientation/actions/workflows/android.yml) [![Chrome Testsuite](https://github.com/apache/cordova-plugin-screen-orientation/actions/workflows/chrome.yml/badge.svg)](https://github.com/apache/cordova-plugin-screen-orientation/actions/workflows/chrome.yml) [![iOS Testsuite](https://github.com/apache/cordova-plugin-screen-orientation/actions/workflows/ios.yml/badge.svg)](https://github.com/apache/cordova-plugin-screen-orientation/actions/workflows/ios.yml) [![Lint Test](https://github.com/apache/cordova-plugin-screen-orientation/actions/workflows/lint.yml/badge.svg)](https://github.com/apache/cordova-plugin-screen-orientation/actions/workflows/lint.yml)
 
 Cordova plugin to set/lock the screen orientation in a common way for iOS, Android, and windows-uwp.  This plugin is based on [Screen Orientation API](http://www.w3.org/TR/screen-orientation/) so the api matches the current spec.
 
@@ -120,49 +118,3 @@ The __screen.orientation__ property will not update when the phone is [rotated 1
 ## Windows UWP Notes
 
 Windows store apps (windows-uwp) will only display orientation changes if the device has some sort of accelerometer.  The internal state of the "orientation" will still be kept, but the actual screen won't rotate unless the device supports it.
-
-# Legacy Changelog
-
-See [RELEASENOTES.md](RELEASENOTES.md) for the automated changelog.
-
-# Changelog
-
-## 2.0.0
-* Common javascript for iOS, Android and Windows.
-
-## 1.4.2
-* [#101](https://github.com/gbenvenuti/cordova-plugin-screen-orientation/pull/101) make iOS rotate as needed when lockOrientation is called
-
-## 1.4.1
-* [#89](https://github.com/gbenvenuti/cordova-plugin-screen-orientation/pull/89) Fix for cordova >= 3.6.3
-
-## 1.4.0
-* Added Windows 8.1 Support
-* [#54](https://github.com/gbenvenuti/cordova-plugin-screen-orientation/pull/54) Background thread for ios
-* [#64](https://github.com/gbenvenuti/cordova-plugin-screen-orientation/pull/64) Orientation naming bug fixed
-* Add portrait upside down to iOS default orientations
-
-## 1.3.5-6
-* Plugin added to npm
-
-## 1.3.4
-* Readme update
-
-## 1.3.3
-* [#53](https://github.com/gbenvenuti/cordova-plugin-screen-orientation/pull/53) WP8 Support
-
-## 1.3.2
-
-* [#33](https://github.com/gbenvenuti/cordova-plugin-screen-orientation/issues/33) iOS8 Delay Block
-
-## 1.3.0
-
-* [#23](https://github.com/gbenvenuti/cordova-plugin-screen-orientation/issues/23) iOS8 flicker
-
-## 1.2.0-1.2.1
-
-* [#19](https://github.com/gbenvenuti/cordova-plugin-screen-orientation/issues/19) iOS8 Crash
-
-
-
-Pull requests welcome.
