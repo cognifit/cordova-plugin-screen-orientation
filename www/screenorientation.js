@@ -98,6 +98,9 @@ function resolveOrientation (orientation, resolve, reject) {
 }
 
 addScreenOrientationApi(screen.orientation);
+window.cfAddScreenOrientationApi = function() {
+    addScreenOrientationApi(screen.orientation);
+}
 
 var onChangeListener = null;
 

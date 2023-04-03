@@ -28,6 +28,9 @@
 
 @implementation CDVOrientation
 
+-(void)pluginInitialize {
+    _attemptRotationToDeviceOrientation = true;
+}
 
 -(void)handleBelowEqualIos15WithOrientationMask:(NSInteger) orientationMask viewController: (CDVViewController*) vc result:(NSMutableArray*) result selector:(SEL) selector
 {
@@ -50,7 +53,10 @@
         if (_lastOrientation != UIInterfaceOrientationUnknown) {
             [[UIDevice currentDevice] setValue:[NSNumber numberWithInt:_lastOrientation] forKey:@"orientation"];
             ((void (*)(CDVViewController*, SEL, NSMutableArray*))objc_msgSend)(vc,selector,result);
-            [UINavigationController attemptRotationToDeviceOrientation];
+            if (_attemptRotationToDeviceOrientation) {
+				[UINavigationController attemptRotationToDeviceOrientation];
+			}
+			_attemptRotationToDeviceOrientation = true;
         }
     }
     if (value != nil) {
@@ -87,11 +93,14 @@
         ((void (*)(CDVViewController*, SEL, NSMutableArray*))objc_msgSend)(vc,selector,result);
     }
     if (value != nil) {
-        _isLocked = true;
-        UIWindowScene *scene = (UIWindowScene*)[[UIApplication.sharedApplication connectedScenes] anyObject];
-        [scene requestGeometryUpdateWithPreferences:(UIWindowSceneGeometryPreferencesIOS*)value errorHandler:^(NSError * _Nonnull error) {
-            NSLog(@"Failed to change orientation  %@ %@", error, [error userInfo]);
-        }];
+    	_isLocked = true;
+		if (_attemptRotationToDeviceOrientation) {
+			UIWindowScene *scene = (UIWindowScene*)[[UIApplication.sharedApplication connectedScenes] anyObject];
+			[scene requestGeometryUpdateWithPreferences:(UIWindowSceneGeometryPreferencesIOS*)value errorHandler:^(NSError * _Nonnull error) {
+				NSLog(@"Failed to change orientation  %@ %@", error, [error userInfo]);
+			}];
+		}
+		_attemptRotationToDeviceOrientation = true;
     } else {
         _isLocked = false;
     }
@@ -157,6 +166,12 @@
     
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
     
+}
+
+-(void)doNotAutorotateOnNextUpdate:(CDVInvokedUrlCommand *)command
+{
+    _attemptRotationToDeviceOrientation = false;
+    [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK] callbackId:command.callbackId];
 }
 
 @end
