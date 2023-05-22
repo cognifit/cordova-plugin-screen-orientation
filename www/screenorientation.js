@@ -56,9 +56,11 @@ if (!screen.orientation) {
 
 setOrientationProperties();
 
-function addScreenOrientationApi (screenObject) {
-    if (screenObject.unlock || screenObject.lock) {
-        screenObject.nativeLock = screenObject.lock;
+function addScreenOrientationApi (screenObject, isRunningFallback) {
+    if (isRunningFallback !== true) {
+        if (screenObject.unlock || screenObject.lock) {
+            screenObject.nativeLock = screenObject.lock;
+        }
     }
 
     screenObject.lock = function (orientation) {
@@ -99,7 +101,7 @@ function resolveOrientation (orientation, resolve, reject) {
 
 addScreenOrientationApi(screen.orientation);
 window.cfAddScreenOrientationApi = function() {
-    addScreenOrientationApi(screen.orientation);
+    addScreenOrientationApi(screen.orientation, true);
 }
 
 var onChangeListener = null;
