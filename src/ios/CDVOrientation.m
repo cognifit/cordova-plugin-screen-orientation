@@ -20,158 +20,223 @@
  */
 
 #import "CDVOrientation.h"
+#import "CDVViewController+CDVOrientation.h"
 #import <Cordova/CDVViewController.h>
-#import <objc/message.h>
 
-@interface CDVOrientation () {}
-@end
+// Values sent by www/screenorientation.js (window.OrientationLockType).
+typedef NS_OPTIONS(NSInteger, CDVOrientationLockType) {
+    CDVOrientationLockPortraitPrimary    = 1,
+    CDVOrientationLockPortraitSecondary  = 2,
+    CDVOrientationLockLandscapePrimary   = 4,
+    CDVOrientationLockLandscapeSecondary = 8,
+    CDVOrientationLockAny                = 15
+};
 
-@implementation CDVOrientation
-
--(void)pluginInitialize {
-    _attemptRotationToDeviceOrientation = true;
+static UIInterfaceOrientationMask CDVOrientationMaskFromLockType(NSInteger lockType)
+{
+    UIInterfaceOrientationMask mask = 0;
+    if (lockType & CDVOrientationLockPortraitPrimary)    mask |= UIInterfaceOrientationMaskPortrait;
+    if (lockType & CDVOrientationLockPortraitSecondary)  mask |= UIInterfaceOrientationMaskPortraitUpsideDown;
+    // Same mapping as the original plugin: landscape-primary is the interface
+    // orientation LandscapeRight (window.orientation == 90).
+    if (lockType & CDVOrientationLockLandscapePrimary)   mask |= UIInterfaceOrientationMaskLandscapeRight;
+    if (lockType & CDVOrientationLockLandscapeSecondary) mask |= UIInterfaceOrientationMaskLandscapeLeft;
+    return mask;
 }
 
--(void)handleBelowEqualIos15WithOrientationMask:(NSInteger) orientationMask viewController: (CDVViewController*) vc result:(NSMutableArray*) result selector:(SEL) selector
+@implementation CDVOrientation {
+    // Set by doNotAutorotateOnNextUpdate, consumed by the next unlock.
+    BOOL _skipRotationOnNextUnlock;
+    // An unlock is waiting for the user to physically rotate the device.
+    BOOL _pendingUnlock;
+    UIDeviceOrientation _deviceOrientationAtUnlock;
+    BOOL _observingDevice;
+}
+
+- (void)pluginInitialize
 {
-    NSValue *value;
-    if (orientationMask != 15) {
-        if (!_isLocked) {
-            _lastOrientation = [UIApplication sharedApplication].statusBarOrientation;
-        }
-        UIInterfaceOrientation deviceOrientation = [UIApplication sharedApplication].statusBarOrientation;
-        if(orientationMask == 8  || (orientationMask == 12  && !UIInterfaceOrientationIsLandscape(deviceOrientation))) {
-            value = [NSNumber numberWithInt:UIInterfaceOrientationLandscapeLeft];
-        } else if (orientationMask == 4){
-            value = [NSNumber numberWithInt:UIInterfaceOrientationLandscapeRight];
-        } else if (orientationMask == 1 || (orientationMask == 3 && !UIInterfaceOrientationIsPortrait(deviceOrientation))) {
-            value = [NSNumber numberWithInt:UIInterfaceOrientationPortrait];
-        } else if (orientationMask == 2) {
-            value = [NSNumber numberWithInt:UIInterfaceOrientationPortraitUpsideDown];
-        }
+    _skipRotationOnNextUnlock = NO;
+    _pendingUnlock = NO;
+}
+
+- (void)dispose
+{
+    [self stopObservingDevice];
+    [super dispose];
+}
+
+#pragma mark - JS API
+
+- (void)screenOrientation:(CDVInvokedUrlCommand*)command
+{
+    NSInteger lockType = [[command argumentAtIndex:0 withDefault:@(CDVOrientationLockAny)] integerValue];
+    NSString* callbackId = command.callbackId;
+
+    void (^work)(void) = ^{
+        CDVPluginResult* result = [self applyLockType:lockType];
+        [self.commandDelegate sendPluginResult:result callbackId:callbackId];
+    };
+
+    if ([NSThread isMainThread]) {
+        work();
     } else {
-        if (_lastOrientation != UIInterfaceOrientationUnknown) {
-            [[UIDevice currentDevice] setValue:[NSNumber numberWithInt:_lastOrientation] forKey:@"orientation"];
-            ((void (*)(CDVViewController*, SEL, NSMutableArray*))objc_msgSend)(vc,selector,result);
-            if (_attemptRotationToDeviceOrientation) {
-				[UINavigationController attemptRotationToDeviceOrientation];
-			}
-			_attemptRotationToDeviceOrientation = true;
-        }
-    }
-    if (value != nil) {
-        _isLocked = true;
-        [[UIDevice currentDevice] setValue:value forKey:@"orientation"];
-    } else {
-        _isLocked = false;
+        dispatch_async(dispatch_get_main_queue(), work);
     }
 }
 
-#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 160000
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunguarded-availability-new"
-// this will stop it complaining about new iOS16 APIs being used.
--(void)handleAboveEqualIos16WithOrientationMask:(NSInteger) orientationMask viewController: (CDVViewController*) vc result:(NSMutableArray*) result selector:(SEL) selector
+- (void)doNotAutorotateOnNextUpdate:(CDVInvokedUrlCommand*)command
 {
-    NSObject *value;
-    // oritentationMask 15 is "unlock" the orientation lock.
-    if (orientationMask != 15) {
-        if (!_isLocked) {
-            _lastOrientation = [UIApplication sharedApplication].statusBarOrientation;
-        }
-        UIInterfaceOrientation deviceOrientation = [UIApplication sharedApplication].statusBarOrientation;
-        if(orientationMask == 8  || (orientationMask == 12  && !UIInterfaceOrientationIsLandscape(deviceOrientation))) {
-            value = [[UIWindowSceneGeometryPreferencesIOS alloc] initWithInterfaceOrientations:UIInterfaceOrientationMaskLandscapeLeft];
-        } else if (orientationMask == 4){
-            value = [[UIWindowSceneGeometryPreferencesIOS alloc] initWithInterfaceOrientations:UIInterfaceOrientationMaskLandscapeRight];
-        } else if (orientationMask == 1 || (orientationMask == 3 && !UIInterfaceOrientationIsPortrait(deviceOrientation))) {
-            value = [[UIWindowSceneGeometryPreferencesIOS alloc] initWithInterfaceOrientations:UIInterfaceOrientationMaskPortrait];
-        } else if (orientationMask == 2) {
-            value = [[UIWindowSceneGeometryPreferencesIOS alloc] initWithInterfaceOrientations:UIInterfaceOrientationMaskPortraitUpsideDown];
-        }
-    } else {
-        ((void (*)(CDVViewController*, SEL, NSMutableArray*))objc_msgSend)(vc,selector,result);
-    }
-    if (value != nil) {
-    	_isLocked = true;
-		if (_attemptRotationToDeviceOrientation) {
-			UIWindowScene *scene = (UIWindowScene*)[[UIApplication.sharedApplication connectedScenes] anyObject];
-			[scene requestGeometryUpdateWithPreferences:(UIWindowSceneGeometryPreferencesIOS*)value errorHandler:^(NSError * _Nonnull error) {
-				NSLog(@"Failed to change orientation  %@ %@", error, [error userInfo]);
-			}];
-		}
-		_attemptRotationToDeviceOrientation = true;
-    } else {
-        _isLocked = false;
-    }
+    _skipRotationOnNextUnlock = YES;
+    [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK]
+                                callbackId:command.callbackId];
 }
-#pragma clang diagnostic pop
 
--(void)handleWithOrientationMask:(NSInteger) orientationMask viewController: (CDVViewController*) vc result:(NSMutableArray*) result selector:(SEL) selector
+#pragma mark - Implementation
+
+- (CDVPluginResult*)applyLockType:(NSInteger)lockType
 {
-    if (@available(iOS 16.0, *)) {
-        [self handleAboveEqualIos16WithOrientationMask:orientationMask viewController:vc result:result selector:selector];
-        // always double check the supported interfaces, so we update if needed
-        // but do it right at the end here to avoid the "double" rotation issue reported in
-        // https://github.com/apache/cordova-plugin-screen-orientation/pull/107
-        [self.viewController setNeedsUpdateOfSupportedInterfaceOrientations];
-    } else {
-        [self handleBelowEqualIos15WithOrientationMask:orientationMask viewController:vc result:result selector:selector];
+    if (![self.viewController isKindOfClass:[CDVViewController class]]) {
+        return [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
+                                 messageAsString:@"CDVOrientation: no CDVViewController available"];
     }
-
-}
-#else
--(void)handleWithOrientationMask:(NSInteger) orientationMask viewController: (CDVViewController*) vc result:(NSMutableArray*) result selector:(SEL) selector
-{
-    [self handleBelowEqualIos15WithOrientationMask:orientationMask viewController:vc result:result selector:selector];
-}
-#endif
-
-
--(void)screenOrientation:(CDVInvokedUrlCommand *)command
-{
-    CDVPluginResult* pluginResult;
-    NSInteger orientationMask = [[command argumentAtIndex:0] integerValue];
     CDVViewController* vc = (CDVViewController*)self.viewController;
-    NSMutableArray* result = [[NSMutableArray alloc] init];
-    
-    if(orientationMask & 1) {
-        [result addObject:[NSNumber numberWithInt:UIInterfaceOrientationPortrait]];
-    }
-    if(orientationMask & 2) {
-        [result addObject:[NSNumber numberWithInt:UIInterfaceOrientationPortraitUpsideDown]];
-    }
-    if(orientationMask & 4) {
-        [result addObject:[NSNumber numberWithInt:UIInterfaceOrientationLandscapeRight]];
-    }
-    if(orientationMask & 8) {
-        [result addObject:[NSNumber numberWithInt:UIInterfaceOrientationLandscapeLeft]];
-    }
-    SEL selector = NSSelectorFromString(@"setSupportedOrientations:");
-    
-    if([vc respondsToSelector:selector]) {
-        if (orientationMask != 15 || [UIDevice currentDevice] == nil) {
-            ((void (*)(CDVViewController*, SEL, NSMutableArray*))objc_msgSend)(vc,selector,result);
-        }
 
-        if ([UIDevice currentDevice] != nil){
-            [self handleWithOrientationMask:orientationMask viewController:vc result:result selector:selector];
-        }
-        
-        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+    UIInterfaceOrientationMask mask = CDVOrientationMaskFromLockType(lockType);
+    if (mask == 0) {
+        return [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
+                                 messageAsString:[NSString stringWithFormat:@"CDVOrientation: invalid orientation mask %ld", (long)lockType]];
     }
-    else {
-        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_INVALID_ACTION messageAsString:@"Error calling to set supported orientations"];
+
+    if (lockType == CDVOrientationLockAny) {
+        [self unlockViewController:vc];
+    } else {
+        [self lockViewController:vc toMask:mask];
     }
-    
-    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-    
+    return [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
 }
 
--(void)doNotAutorotateOnNextUpdate:(CDVInvokedUrlCommand *)command
+- (void)lockViewController:(CDVViewController*)vc toMask:(UIInterfaceOrientationMask)mask
 {
-    _attemptRotationToDeviceOrientation = false;
-    [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK] callbackId:command.callbackId];
+    // A new lock cancels any unlock that was waiting for a device rotation.
+    [self cancelPendingUnlock];
+
+    [vc cdvo_setLockedOrientationMask:mask];
+    // Tell UIKit the supported orientations changed (replaces the deprecated
+    // +[UIViewController attemptRotationToDeviceOrientation]).
+    [vc setNeedsUpdateOfSupportedInterfaceOrientations];
+
+    UIWindowScene* scene = [self windowSceneForViewController:vc];
+    if (scene == nil) {
+        // Not attached to a scene yet: the stored mask will be honoured as soon
+        // as the view controller is shown.
+        return;
+    }
+
+    UIInterfaceOrientation current = scene.effectiveGeometry.interfaceOrientation;
+    BOOL currentIsAllowed = current != UIInterfaceOrientationUnknown && (mask & (1 << current)) != 0;
+    if (currentIsAllowed) {
+        // Already in an allowed orientation: do not rotate (this avoids the
+        // "double rotation"/180° flip when locking to 'landscape' while already
+        // in landscape).
+        return;
+    }
+
+    UIWindowSceneGeometryPreferencesIOS* prefs =
+        [[UIWindowSceneGeometryPreferencesIOS alloc] initWithInterfaceOrientations:mask];
+    [scene requestGeometryUpdateWithPreferences:prefs errorHandler:^(NSError* _Nonnull error) {
+        // On iPad this fails when the app runs in a resizable window / multitasking.
+        NSLog(@"[CDVOrientation] requestGeometryUpdate failed: %@", error);
+    }];
+}
+
+- (void)unlockViewController:(CDVViewController*)vc
+{
+    BOOL skipRotation = _skipRotationOnNextUnlock;
+    _skipRotationOnNextUnlock = NO;
+
+    if ([vc cdvo_lockedOrientationMask] == 0) {
+        // Nothing locked.
+        [self cancelPendingUnlock];
+        return;
+    }
+
+    if (skipRotation) {
+        // Keep the current lock until the user physically rotates the device,
+        // so the interface does not jump back to the device orientation now.
+        _pendingUnlock = YES;
+        _deviceOrientationAtUnlock = [UIDevice currentDevice].orientation;
+        [self startObservingDevice];
+        return;
+    }
+
+    [self cancelPendingUnlock];
+    [vc cdvo_setLockedOrientationMask:0];
+    [vc setNeedsUpdateOfSupportedInterfaceOrientations];
+}
+
+- (UIWindowScene*)windowSceneForViewController:(UIViewController*)vc
+{
+    UIWindowScene* scene = vc.viewIfLoaded.window.windowScene;
+    if (scene != nil) {
+        return scene;
+    }
+
+    UIWindowScene* fallback = nil;
+    for (UIScene* s in UIApplication.sharedApplication.connectedScenes) {
+        if (![s isKindOfClass:[UIWindowScene class]]) continue;
+        if (s.activationState == UISceneActivationStateForegroundActive) {
+            return (UIWindowScene*)s;
+        }
+        if (fallback == nil) fallback = (UIWindowScene*)s;
+    }
+    return fallback;
+}
+
+#pragma mark - Deferred unlock (doNotAutorotateOnNextUpdate)
+
+- (void)startObservingDevice
+{
+    if (_observingDevice) return;
+    _observingDevice = YES;
+    [[UIDevice currentDevice] beginGeneratingDeviceOrientationNotifications];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(deviceOrientationDidChange:)
+                                                 name:UIDeviceOrientationDidChangeNotification
+                                               object:nil];
+}
+
+- (void)stopObservingDevice
+{
+    if (!_observingDevice) return;
+    _observingDevice = NO;
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:UIDeviceOrientationDidChangeNotification
+                                                  object:nil];
+    [[UIDevice currentDevice] endGeneratingDeviceOrientationNotifications];
+}
+
+- (void)cancelPendingUnlock
+{
+    _pendingUnlock = NO;
+    [self stopObservingDevice];
+}
+
+- (void)deviceOrientationDidChange:(NSNotification*)notification
+{
+    if (!_pendingUnlock) return;
+
+    UIDeviceOrientation device = [UIDevice currentDevice].orientation;
+    // Ignore face up / face down / unknown and "no real change".
+    if (!UIDeviceOrientationIsValidInterfaceOrientation(device) || device == _deviceOrientationAtUnlock) {
+        return;
+    }
+
+    [self cancelPendingUnlock];
+    if ([self.viewController isKindOfClass:[CDVViewController class]]) {
+        CDVViewController* vc = (CDVViewController*)self.viewController;
+        [vc cdvo_setLockedOrientationMask:0];
+        [vc setNeedsUpdateOfSupportedInterfaceOrientations];
+    }
 }
 
 @end
