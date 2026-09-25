@@ -43,6 +43,8 @@
 
         <header-file src="src/ios/CDVOrientation.h" />
         <source-file src="src/ios/CDVOrientation.m" />
+        <header-file src="src/ios/CDVViewController+CDVOrientation.h" />
+        <source-file src="src/ios/CDVViewController+CDVOrientation.m" />
 
     </platform>
 
