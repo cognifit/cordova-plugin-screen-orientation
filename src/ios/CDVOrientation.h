@@ -21,17 +21,28 @@
 
 #import <Cordova/CDVPlugin.h>
 #import <UIKit/UIKit.h>
-#import <Cordova/CDVViewController.h>
 
+/**
+ * CogniFit fork of cordova-plugin-screen-orientation (iOS side).
+ *
+ * Requirements: iOS 16+ APIs only (deployment target 17.0), scene-based app
+ * lifecycle (cordova-ios >= 8). Also works with cordova-ios 7.
+ *
+ * The allowed orientations are stored on the CDVViewController instance and
+ * returned from -supportedInterfaceOrientations (see
+ * CDVViewController+CDVOrientation.m), because cordova-ios 8 removed the old
+ * CDVViewController -setSupportedOrientations: API this plugin relied on.
+ */
 @interface CDVOrientation : CDVPlugin
-{
-@protected
-    BOOL _isLocked;
-    BOOL _attemptRotationToDeviceOrientation;
-    UIInterfaceOrientation _lastOrientation;
-}
 
-- (void)screenOrientation:(CDVInvokedUrlCommand *)command;
-- (void)doNotAutorotateOnNextUpdate:(CDVInvokedUrlCommand *)command;
+/// args[0]: OrientationLockType bitmask coming from www/screenorientation.js
+/// (1 portrait-primary, 2 portrait-secondary, 4 landscape-primary,
+///  8 landscape-secondary, 3 portrait, 12 landscape, 15 any/unlock).
+- (void)screenOrientation:(CDVInvokedUrlCommand*)command;
+
+/// The next *unlock* ('any') will not rotate the interface to the device's
+/// physical orientation right away; the unlock takes effect the next time the
+/// user physically rotates the device.
+- (void)doNotAutorotateOnNextUpdate:(CDVInvokedUrlCommand*)command;
 
 @end
